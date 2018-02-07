@@ -10,25 +10,22 @@ class Network
 {
 public:
     static bool isPowerOfTwo(int value);
-    Network(unsigned int size);
+    static double log4(double value);
+    explicit Network(unsigned int inputCount,unsigned int width, unsigned int height);
     virtual ~Network();
     double work(const double *inputs,unsigned int size);
     double train(double speed,const double *inputs,unsigned int size,double expectedValue); // returns error
     void apllayResult();
 
-    Neuron2i *lastN;
+    NeuronNi ***layers;
+    NeuronNi *lastN;
+    double **resultsFromLayers;
+    double **errorsFromLayers;
 
-    NeuronNi *middleN1;
-    NeuronNi *middleN2;
 
-    NeuronNi *firstN1;
-    NeuronNi *firstN2;
-    NeuronNi *firstN3;
-    NeuronNi *firstN4;
-
-    double *resultsFirstLayer;
-
-    unsigned int nSize = 0;
+    unsigned int inputCount = 0;
+    unsigned int width = 0;
+    unsigned int height = 0;
 
     unsigned int epochCount = 0;
     Network();

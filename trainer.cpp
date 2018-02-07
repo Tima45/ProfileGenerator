@@ -17,7 +17,7 @@ void Trainer::stratTraining(double speed, int epochCount, double acceptableError
             lock.unlock();
             double commonError = 0;
             for(int i = 0; i < networks.count(); i++){
-                if(fabs(networks.at(i)->lastError) > acceptableError){
+                //if(fabs(networks.at(i)->lastError) > acceptableError){
                     networks.at(i)->lastError = 0;
                     for(int d = 0; d < dataset->elements.count(); d++){
                         double error = networks.at(i)->train(speed*dataset->elements.at(d)->takeToAccount,
@@ -27,9 +27,9 @@ void Trainer::stratTraining(double speed, int epochCount, double acceptableError
                         networks.at(i)->lastError += error;
                     }
                     networks.at(i)->lastError /= dataset->elements.count();
-                    //networks.at(i)->apllayResult();
+                    networks.at(i)->apllayResult();
 
-                }
+                //}
                 commonError += networks.at(i)->lastError;
                 networks.at(i)->epochCount++;
             }

@@ -5,49 +5,81 @@ bool Network::isPowerOfTwo(int value)
     return (value & (value - 1)) == 0;
 }
 
-Network::Network(unsigned int size)
+double Network::log4(double value)
 {
-    nSize = size;
+    return log(value)/log(4);
+}
 
-    lastN = new Neuron2i();
+Network::Network(unsigned int inputCount, unsigned int width, unsigned int height)
+{
+    this->inputCount = inputCount;
+    this->width = width;
+    this->height = height;
 
-    middleN1 = new NeuronNi(4);
-    middleN2 = new NeuronNi(4);
+    lastN = new NeuronNi(height);
 
-    firstN1 = new NeuronNi(nSize);
-    firstN2 = new NeuronNi(nSize);
-    firstN3 = new NeuronNi(nSize);
-    firstN4 = new NeuronNi(nSize);
+    layers = new NeuronNi**[width];
+    resultsFromLayers = new double*[width];
 
-    resultsFirstLayer = new double[4];
+    for(unsigned int layerIndex = 0; layerIndex < width-1; layerIndex++){
+        resultsFromLayers[layerIndex] = new double[height];
+        layers[layerIndex] = new NeuronNi*[height];
+        for(unsigned int i = 0; i < height; i++){
+            layers[layerIndex][i] = new NeuronNi(height);
+        }
+    }
+
+    resultsFromLayers[width-1] = new double[height];
+
+    layers[width-1] = new NeuronNi*[height];
+    for(unsigned int i = 0; i < height; i++){
+        layers[width-1][i] = new NeuronNi(inputCount);
+    }
+
+
+    errorsFromLayers = new double*[width-1];
+    for(unsigned int layerIndex = 0; layerIndex < width-1; layerIndex++){
+        errorsFromLayers[layerIndex] = new double[height];
+    }
+
 }
 
 Network::~Network()
 {
     delete lastN;
-    delete middleN1;
-    delete middleN2;
 
-    delete firstN1;
-    delete firstN2;
-    delete firstN3;
-    delete firstN4;
-    delete[] resultsFirstLayer;
+    for(unsigned int layerIndex = 0; layerIndex < width; layerIndex++){
+        for(unsigned int i = 0; i < height; i++){
+            delete layers[layerIndex][i];
+        }
+        delete[] layers[layerIndex];
+        delete[] resultsFromLayers[layerIndex];
+    }
+    delete[] layers;
+    delete[] resultsFromLayers;
+
+
+    for(unsigned int layerIndex = 0; layerIndex < width-1; layerIndex++){
+        delete[] errorsFromLayers[layerIndex];
+    }
+    delete[] errorsFromLayers;
+
 }
 
 double Network::work(const double *inputs, unsigned int size)
 {
     double result = -1;
-    if(nSize == size){
-        resultsFirstLayer[0] = firstN1->work(inputs,size);
-        resultsFirstLayer[1] = firstN2->work(inputs,size);
-        resultsFirstLayer[2] = firstN3->work(inputs,size);
-        resultsFirstLayer[3] = firstN4->work(inputs,size);
+    if(inputCount == size){
 
-        double resultMN1 = middleN1->work(resultsFirstLayer,4);
-        double resultMN2 = middleN2->work(resultsFirstLayer,4);
-
-        return lastN->work(resultMN1,resultMN2);
+        for(unsigned int i = 0; i < height;i++){
+            resultsFromLayers[width-1][i] = layers[width-1][i]->work(inputs,size);
+        }
+        for(int layerIndex = width-2; layerIndex >= 0; layerIndex--){
+            for(unsigned int i = 0; i < height; i++){
+                resultsFromLayers[layerIndex][i] = layers[layerIndex][i]->work(resultsFromLayers[layerIndex+1],height);
+            }
+        }
+        result = lastN->work(resultsFromLayers[0],height);
     }
     return result;
 }
@@ -55,50 +87,51 @@ double Network::work(const double *inputs, unsigned int size)
 double Network::train(double speed, const double *inputs, unsigned int size, double expectedValue)
 {
     double commonError = 0;
-    if(nSize == size){
-        resultsFirstLayer[0] = firstN1->work(inputs,size);
-        resultsFirstLayer[1] = firstN2->work(inputs,size);
-        resultsFirstLayer[2] = firstN3->work(inputs,size);
-        resultsFirstLayer[3] = firstN4->work(inputs,size);
-
-        double resultMN1 = middleN1->work(resultsFirstLayer,4);
-        double resultMN2 = middleN2->work(resultsFirstLayer,4);
-
-        double result = lastN->work(resultMN1,resultMN2);
-
+    if(inputCount == size){
+        double result = this->work(inputs,size);
         commonError = expectedValue - result;
 
-        double correctionForMiddle = lastN->calculateCorrection(speed,commonError,resultMN1,resultMN2);
+        double correctionForLastLayer = lastN->calculateCorrection(speed,commonError,resultsFromLayers[0],height);
 
-        double correctionFromMiddle1 = middleN1->calculateCorrection(speed,correctionForMiddle,resultsFirstLayer,4);
-        double correctionFromMiddle2 = middleN2->calculateCorrection(speed,correctionForMiddle,resultsFirstLayer,4);
+        for(unsigned int i = 0; i < height; i++){
+            errorsFromLayers[0][i] = layers[0][i]->calculateCorrection(speed,correctionForLastLayer,resultsFromLayers[1],height);
+        }
 
-        firstN1->calculateCorrection(speed,correctionFromMiddle1,inputs,4);
-        firstN2->calculateCorrection(speed,correctionFromMiddle1,inputs,4);
-        firstN3->calculateCorrection(speed,correctionFromMiddle1,inputs,4);
-        firstN4->calculateCorrection(speed,correctionFromMiddle1,inputs,4);
+        for(unsigned int layerIndex = 1; layerIndex < width-1; layerIndex++){
+            for(unsigned int i = 0; i < height; i++){
+                errorsFromLayers[layerIndex][i] = 0;
+            }
+            for(unsigned int i = 0; i < height; i++){
+                for(unsigned int j = 0; j < height; j++){
+                    errorsFromLayers[layerIndex][i] += layers[layerIndex][i]->calculateCorrection(speed,errorsFromLayers[layerIndex-1][j],resultsFromLayers[layerIndex+1],height);
+                }
+            }
+        }
 
-        firstN1->calculateCorrection(speed,correctionFromMiddle2,inputs,4);
-        firstN2->calculateCorrection(speed,correctionFromMiddle2,inputs,4);
-        firstN3->calculateCorrection(speed,correctionFromMiddle2,inputs,4);
-        firstN4->calculateCorrection(speed,correctionFromMiddle2,inputs,4);
+        for(unsigned int i = 0; i < height; i++){
+            for(unsigned int j = 0; j < height; j++){
+                layers[width-1][i]->calculateCorrection(speed,errorsFromLayers[width-2][j],inputs,size);
+            }
+        }
     }
-    apllayResult();
+    //apllayResult();
     return commonError;
 }
 
 void Network::apllayResult()
 {
     lastN->updateWeights();
-    middleN1->updateWeights();
-    middleN2->updateWeights();
-    firstN1->updateWeights();
-    firstN2->updateWeights();
-    firstN3->updateWeights();
-    firstN4->updateWeights();
+
+    for(unsigned int layerIndex = 0; layerIndex < width-1; layerIndex++){
+        for(unsigned int i = 0; i < height; i++){
+            layers[layerIndex][i]->updateWeights();
+        }
+    }
 }
 
 Network::Network()
 {
-    nSize = 0;
+    this->inputCount = 0;
+    this->width = 0;
+    this->height = 0;
 }

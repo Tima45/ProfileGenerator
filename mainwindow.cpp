@@ -193,7 +193,6 @@ void MainWindow::on_loadGeneratorButton_clicked()
 void MainWindow::on_diffButton_clicked()
 {
     if(!dataset->elements.isEmpty()){
-        double commonError = 0;
         QVector<QVector<double>> resultPic;
         for(unsigned int y = 0; y < generator->profileSize; y++){
             resultPic.append(QVector<double>());
@@ -208,7 +207,6 @@ void MainWindow::on_diffButton_clicked()
                     double pixelValue = generator->networks.at(y).at(x)->work(dataset->elements.at(i)->xyProfile.constData(),dataset->elements.at(i)->xyProfile.count());
                     resultPic[y][x] += fabs(dataset->elements.at(i)->pic[y][x] - pixelValue)/dataset->elements.count();
 
-                    commonError += resultPic[y][x]/(generator->profileSize * generator->profileSize);
                 }
             }
         }
@@ -220,8 +218,6 @@ void MainWindow::on_diffButton_clicked()
             }
         }
         imshow("Diff",newPic);
-        qDebug() << commonError;
-
     }else{
         QMessageBox::critical(this,"Error","Dataset is epmty!");
     }

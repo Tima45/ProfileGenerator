@@ -23,12 +23,13 @@ ProfileGenerator::ProfileGenerator(unsigned int profileSize, QObject *parent) : 
         int trainerIndex = 0;
         unsigned int counter = 0;
 
-        NetworkSaveable *tamplateNetwork = new NetworkSaveable(profileSize*2,0,0);
+        NetworkSaveable *tamplateNetwork = new NetworkSaveable(profileSize*2,0,0,3,10);
 
         for(unsigned int y = 0; y < profileSize; y++){
             networks.append(QList<NetworkSaveable*>());
             for(unsigned int x = 0; x < profileSize; x++){
                 NetworkSaveable *n = new NetworkSaveable(*tamplateNetwork);
+
                 n->x = x;
                 n->y = y;
                 networks.last().append(n);
@@ -122,13 +123,30 @@ void ProfileGenerator::load(QString path)
         QDataStream s(&f);
 
         s >> profileSize;
+        unsigned int counter = 0;
+        int trainerIndex = 0;
+
+        for(int i = 0; i < trainersCount; i++){
+            trainers.at(i)->networks.clear();
+        }
+
         for(unsigned int y = 0; y < profileSize; y++){
             for(unsigned int x = 0; x < profileSize; x++){
                 networks.at(y).at(x)->load(s);
+                trainers.at(trainerIndex)->networks.append(networks.at(y).at(x));
+                counter++;
+                if(counter == (profileSize*profileSize)/trainersCount){
+                    trainerIndex++;
+                    counter = 0;
+                }
             }
         }
 
         f.close();
+
+
+
+
     }else{
         qDebug() << "wrong file";
     }

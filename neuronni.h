@@ -6,7 +6,8 @@
 class NeuronNi : public Neuron
 {
 public:
-    NeuronNi(unsigned int inputCount);
+    explicit NeuronNi(unsigned int inputCount);
+    NeuronNi(const NeuronNi &other);
     double work(const double *inputs,unsigned int inputCount);
     double calculateCorrection(double speed,double error,const double *inputs,unsigned int inputCount);
     void updateWeights();

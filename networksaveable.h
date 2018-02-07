@@ -8,8 +8,8 @@ class NetworkSaveable : public Network
 {
 public:
     NetworkSaveable();
-    NetworkSaveable(NetworkSaveable &other);
-    NetworkSaveable(unsigned int inputCount,int x, int y);
+    explicit NetworkSaveable(const NetworkSaveable &other);
+    NetworkSaveable(unsigned int inputCount,int x, int y, int width, int height);
     ~NetworkSaveable();
     void save(QDataStream &s);
     void load(QDataStream &s);
