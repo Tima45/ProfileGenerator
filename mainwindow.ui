@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>785</width>
-    <height>498</height>
+    <width>1169</width>
+    <height>579</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,6 +15,16 @@
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="2" rowspan="2">
+     <widget class="QCustomPlot" name="plot2" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>3</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+    </item>
     <item row="0" column="0" rowspan="2">
      <widget class="QCustomPlot" name="plot" native="true">
       <property name="sizePolicy">
@@ -25,7 +35,7 @@
       </property>
      </widget>
     </item>
-    <item row="0" column="1" rowspan="2">
+    <item row="0" column="3">
      <widget class="QGroupBox" name="groupBox">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -95,7 +105,7 @@
             <string/>
            </property>
            <property name="decimals">
-            <number>12</number>
+            <number>16</number>
            </property>
            <property name="minimum">
             <double>0.000001000000000</double>
@@ -258,6 +268,13 @@
           <widget class="QPushButton" name="diffButton">
            <property name="text">
             <string>Diff</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="tryRealProfileButton">
+           <property name="text">
+            <string>Try profile</string>
            </property>
           </widget>
          </item>

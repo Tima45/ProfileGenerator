@@ -34,7 +34,8 @@ SOURCES += main.cpp\
     networksaveable.cpp \
     datasetelement.cpp \
     dataset.cpp \
-    trainer.cpp
+    trainer.cpp \
+    profiledata.cpp
 
 HEADERS  += mainwindow.h \
     plot/qcustomplot.h \
@@ -46,7 +47,8 @@ HEADERS  += mainwindow.h \
     networksaveable.h \
     datasetelement.h \
     dataset.h \
-    trainer.h
+    trainer.h \
+    profiledata.h
 
 FORMS    += mainwindow.ui
 
@@ -74,3 +76,10 @@ LIBS+=C:/Librarys/OpenCV2/dll/libopencv_video320.dll
 LIBS+=C:/Librarys/OpenCV2/dll/libopencv_videoio320.dll
 
 LIBS+=C:/Librarys/OpenCV2/dll/opencv_ffmpeg320.dll
+
+
+
+INCLUDEPATH += "C:/Librarys/WaveletSpectrum/include"
+INCLUDEPATH += "C:/Librarys/gsl/include"
+LIBS += "C:/Librarys/WaveletSpectrum/lib/libWaveletSpectrum.a"
+LIBS += "C:/Librarys/gsl/lib/libgsl.a"

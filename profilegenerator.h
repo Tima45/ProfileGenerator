@@ -20,7 +20,7 @@ class ProfileGenerator : public QObject
 public:
     ProfileGenerator(unsigned int profileSize,QObject *parent = 0);
     ~ProfileGenerator();
-    Mat generateProfile(QVector<double> xProfile, QVector<double> yProfile);
+    Mat generateProfile(QVector<double> xyProfile);
     int trainersCount = 8;
     QList<QList<NetworkSaveable*>> networks;
     unsigned int profileSize;
@@ -40,12 +40,15 @@ signals:
     void trainingFinished();
     //=======================
     void stratTrainers(double speed, int epochCount,double acceptableError,Dataset *dataset);
+
+
 public slots:
     void save(QString path);
     void load(QString path);
     void startTraining(double speed, int epochCount,double acceptableError,Dataset *dataset);
     void interapt();
     //=======================
+
     void trainerStopped();
     void someTrainerEpochFinished(ulong currentEpoch,double commonError);
 

@@ -6,6 +6,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    ui->acceptableErrorEdit->setMinimum(0.00000000001);
+    ui->acceptableErrorEdit->setValue(0.00000000001);
     generator = new ProfileGenerator(128,this);
     initPlot();
     dataset = new Dataset(this);
@@ -43,6 +45,15 @@ void MainWindow::initPlot()
         tr2->setGraph(errorGraphs.last());
         tracers2.append(tr2);
     }
+
+    ui->plot2->setInteraction(QCP::iRangeDrag, true);
+    ui->plot2->setInteraction(QCP::iRangeZoom, true);
+    ui->plot2->axisRect()->setRangeDrag(Qt::Horizontal);
+    ui->plot2->axisRect()->setRangeZoom(Qt::Horizontal);
+    xyProfileGraph = ui->plot2->addGraph();
+    //tempGraph = ui->plot2->addGraph();
+
+
 
     ui->plot->setInteraction(QCP::iRangeDrag, true);
     ui->plot->setInteraction(QCP::iRangeZoom, true);
@@ -106,8 +117,12 @@ void MainWindow::on_tryButton_clicked()
             }
             xProfile.append(summX);
         }
+        QVector<double> xyProfile;
 
-        Mat pic = generator->generateProfile(xProfile,yProfile);
+        xyProfile.append(xProfile);
+        xyProfile.append(yProfile);
+
+        Mat pic = generator->generateProfile(xyProfile);
         imshow("Try",pic);
     }else{
         qDebug() << "on_tryButton_clicked:: no pic data";
@@ -220,5 +235,34 @@ void MainWindow::on_diffButton_clicked()
         imshow("Diff",newPic);
     }else{
         QMessageBox::critical(this,"Error","Dataset is epmty!");
+    }
+}
+
+void MainWindow::on_tryRealProfileButton_clicked()
+{
+    QString filePath = QFileDialog::getOpenFileName(this,"Select .csv file",lastPath,"Profile data (*.csv)");
+    if(!filePath.isEmpty()){
+        if(profile == nullptr){
+            profile->deleteLater();
+        }
+        profile = new ProfileData(filePath,this);
+        if(!profile->xyProfile.isEmpty()){
+            QVector<double> keys;
+            for(int i = 0; i < profile->xyProfile.count(); i++){
+                keys.append(i);
+            }
+            xyProfileGraph->clearData();
+            xyProfileGraph->setData(keys,profile->xyProfile);
+            ui->plot2->rescaleAxes();
+            ui->plot2->replot();
+
+
+            Mat pic = generator->generateProfile(profile->xyProfile);
+            imshow("Try",pic);
+
+            qDebug() << profile->xyProfile.count();
+        }else{
+            qDebug() << "Empty";
+        }
     }
 }

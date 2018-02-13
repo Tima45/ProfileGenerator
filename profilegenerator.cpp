@@ -47,6 +47,7 @@ ProfileGenerator::ProfileGenerator(unsigned int profileSize, QObject *parent) : 
         for(int i = 0;i < trainersCount;i++){
             threads.at(i)->start();
         }
+        threads.at(0)->start();
 
     }else{
         qDebug() << "ProfileGenerator::ProfileGenerator profileSize not power of 2";
@@ -68,13 +69,10 @@ ProfileGenerator::~ProfileGenerator()
     }
 }
 
-Mat ProfileGenerator::generateProfile(QVector<double> xProfile, QVector<double> yProfile)
+Mat ProfileGenerator::generateProfile(QVector<double> xyProfile)
 {
     Mat newPic(profileSize,profileSize,CV_8UC1);
-    if((xProfile.count() == yProfile.count()) &&  (yProfile.count() == (int)profileSize)){
-        QVector<double> xyProfile;
-        xyProfile.append(xProfile);
-        xyProfile.append(yProfile);
+    if(xyProfile.count() == 2*(int)profileSize){
         double maxAbs = 0;
         for(int i = 0; i < xyProfile.count(); i++){
             if(fabs(xyProfile.at(i)) > maxAbs){
@@ -130,9 +128,11 @@ void ProfileGenerator::load(QString path)
             trainers.at(i)->networks.clear();
         }
 
+
         for(unsigned int y = 0; y < profileSize; y++){
             for(unsigned int x = 0; x < profileSize; x++){
                 networks.at(y).at(x)->load(s);
+
                 trainers.at(trainerIndex)->networks.append(networks.at(y).at(x));
                 counter++;
                 if(counter == (profileSize*profileSize)/trainersCount){
