@@ -34,13 +34,6 @@ NetworkSaveable::NetworkSaveable(const NetworkSaveable &other)
         layers[width-1][i] = new NeuronNi(*other.layers[width-1][i]);
     }
 
-
-
-    errorsFromLayers = new double*[width-1];
-    for(unsigned int layerIndex = 0; layerIndex < width-1; layerIndex++){
-        errorsFromLayers[layerIndex] = new double[height];
-    }
-
 }
 
 NetworkSaveable::NetworkSaveable(unsigned int inputCount, int x, int y, int width, int height) : Network(inputCount,width,height), x(x), y(y)

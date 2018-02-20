@@ -6,20 +6,30 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->acceptableErrorEdit->setMinimum(0.00000000001);
-    ui->acceptableErrorEdit->setValue(0.00000000001);
-    generator = new ProfileGenerator(128,this);
+    generator = new ProfileGenerator(128);
+    f = new QThread(this);
+    generator->moveToThread(f);
+    f->start();
     initPlot();
     dataset = new Dataset(this);
-    connect(this,SIGNAL(startTraining(double,int,double,Dataset*)),generator,SLOT(startTraining(double,int,double,Dataset*)));
-    connect(this,SIGNAL(interaptTraining()),generator,SLOT(interapt()));
+
+    qRegisterMetaType<QVector<double> >("QVector<double>");
+
+    connect(generator,SIGNAL(csvEpochFinished(int)),this,SLOT(updateEpoch(int)));
+    connect(this,SIGNAL(startTraining(double,int,double,Dataset*)),generator,SLOT(startTraining(double,int,double,Dataset*)),Qt::QueuedConnection);
+    connect(generator,SIGNAL(showProfiles(QVector<double>,QVector<double>)),this,SLOT(showProfiles(QVector<double>,QVector<double>)));
+    connect(this,SIGNAL(interaptTraining()),generator,SLOT(interapt()),Qt::DirectConnection);
     connect(generator,SIGNAL(epochFinished(ulong,double,int)),this,SLOT(updateTrainingProgress(ulong,double,int)),Qt::QueuedConnection);
     connect(generator,SIGNAL(trainingFinished()),this,SLOT(trainingFinished()));
+
+
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+    f->terminate();
+    generator->deleteLater();
 }
 
 void MainWindow::initPlot()
@@ -51,6 +61,8 @@ void MainWindow::initPlot()
     ui->plot2->axisRect()->setRangeDrag(Qt::Horizontal);
     ui->plot2->axisRect()->setRangeZoom(Qt::Horizontal);
     xyProfileGraph = ui->plot2->addGraph();
+    xyResultProfileGraph = ui->plot2->addGraph();
+    xyResultProfileGraph->setPen(QPen(QColor(Qt::red)));
     //tempGraph = ui->plot2->addGraph();
 
 
@@ -74,7 +86,6 @@ void MainWindow::on_startStopButton_clicked()
             isTraining = true;
             ui->startStopButton->setText("Stop");
             ui->speedEdit->setEnabled(false);
-            ui->acceptableErrorEdit->setEnabled(false);
             ui->epochCount->setEnabled(false);
             ui->saveGeneratorButton->setEnabled(false);
             ui->loadDataSetButton->setEnabled(false);
@@ -82,7 +93,7 @@ void MainWindow::on_startStopButton_clicked()
             ui->tryButton->setEnabled(false);
             ui->diffButton->setEnabled(false);
 
-            emit startTraining(ui->speedEdit->value(),ui->epochCount->value(),ui->acceptableErrorEdit->value(),dataset);
+            emit startTraining(ui->speedEdit->value(),ui->epochCount->value(),1,dataset);
         }else{
             QMessageBox::critical(this,"Error","Dataset is epmty!");
         }
@@ -94,38 +105,116 @@ void MainWindow::on_startStopButton_clicked()
 
 void MainWindow::on_tryButton_clicked()
 {
-    lastPath = QFileDialog::getOpenFileName(this,"Try",lastPath,"Image files (*.png)");
-    Mat sourcePic;
-    sourcePic = imread(lastPath.toStdString(),IMREAD_GRAYSCALE);
+    lastPath = QFileDialog::getOpenFileName(this,"Try",lastPath,"Image or csv files (*.png *.csv)");
 
-    if(sourcePic.data){
-        QVector<double> xProfile;
-        QVector<double> yProfile;
-        for(int y = 0; y < sourcePic.rows; y++){
-            double summY = 0;
-            for(int x = 0; x < sourcePic.cols; x++){
-                uchar value = sourcePic.at<uchar>(y,x);
-                summY += (value);
-            }
-            yProfile.append(summY);
+    if(lastPath.endsWith(".csv")){
+        if(profile == nullptr){
+            profile->deleteLater();
         }
-        for(int x = 0; x < sourcePic.cols; x++){
-            double summX = 0;
+        profile = new ProfileData(lastPath,this);
+        if(!profile->xyProfile.isEmpty()){
+            QVector<double> keys;
+            for(int i = 0; i < profile->xyProfile.count(); i++){
+                keys.append(i);
+            }
+            xyProfileGraph->clearData();
+            xyProfileGraph->setData(keys,profile->xyProfile);
+
+            Mat pic = generator->generateProfile(profile->xyProfile);
+            imshow("Try",pic);
+
+            QVector<double> xProfile;
+            QVector<double> yProfile;
+            for(int y = 0; y < pic.rows; y++){
+                double summY = 0;
+                for(int x = 0; x < pic.cols; x++){
+                    uchar value = pic.at<uchar>(y,x);
+                    summY += (value);
+                }
+                yProfile.append(summY);
+            }
+            for(int x = 0; x < pic.cols; x++){
+                double summX = 0;
+                for(int y = 0; y < pic.rows; y++){
+                    uchar value = pic.at<uchar>(y,x);
+                    summX += (value);
+                }
+                xProfile.append(summX);
+            }
+
+
+
+            QVector<double> xyProfile;
+            xyProfile.append(xProfile);
+            xyProfile.append(yProfile);
+
+            double maxAbs = 0;
+            for(int i = 0; i < xyProfile.count(); i++){
+                if(fabs(xyProfile.at(i)) > maxAbs){
+                    maxAbs = fabs(xyProfile.at(i));
+                }
+            }
+            for(int i = 0; i < xyProfile.count(); i++){
+                xyProfile[i] /= maxAbs;
+            }
+
+            xyResultProfileGraph->setData(keys,xyProfile);
+
+
+            ui->plot2->rescaleAxes();
+            ui->plot2->replot();
+            qDebug() << profile->xyProfile.count();
+
+        }else{
+            qDebug() << "Empty";
+        }
+    }else if(lastPath.endsWith(".png")){
+
+
+        Mat sourcePic;
+        sourcePic = imread(lastPath.toStdString(),IMREAD_GRAYSCALE);
+
+        if(sourcePic.data){
+            QVector<double> xProfile;
+            QVector<double> yProfile;
             for(int y = 0; y < sourcePic.rows; y++){
-                uchar value = sourcePic.at<uchar>(y,x);
-                summX += (value);
+                double summY = 0;
+                for(int x = 0; x < sourcePic.cols; x++){
+                    uchar value = sourcePic.at<uchar>(y,x);
+                    summY += (value);
+                }
+                yProfile.append(summY);
             }
-            xProfile.append(summX);
+            for(int x = 0; x < sourcePic.cols; x++){
+                double summX = 0;
+                for(int y = 0; y < sourcePic.rows; y++){
+                    uchar value = sourcePic.at<uchar>(y,x);
+                    summX += (value);
+                }
+                xProfile.append(summX);
+            }
+            QVector<double> xyProfile;
+
+            xyProfile.append(xProfile);
+            xyProfile.append(yProfile);
+
+
+            double maxAbs = 0;
+            for(int i = 0; i < xyProfile.count(); i++){
+                if(fabs(xyProfile.at(i)) > maxAbs){
+                    maxAbs = fabs(xyProfile.at(i));
+                }
+            }
+            for(int i = 0; i < xyProfile.count(); i++){
+                xyProfile[i] /= maxAbs;
+            }
+
+
+            Mat pic = generator->generateProfile(xyProfile);
+            imshow("Try",pic);
+        }else{
+            qDebug() << "on_tryButton_clicked:: no pic data";
         }
-        QVector<double> xyProfile;
-
-        xyProfile.append(xProfile);
-        xyProfile.append(yProfile);
-
-        Mat pic = generator->generateProfile(xyProfile);
-        imshow("Try",pic);
-    }else{
-        qDebug() << "on_tryButton_clicked:: no pic data";
     }
 
 
@@ -134,9 +223,9 @@ void MainWindow::on_tryButton_clicked()
 void MainWindow::on_loadDataSetButton_clicked()
 {
     dataset->clear();
-    QString path = QFileDialog::getExistingDirectory(this,"Select folder with pictures png dataset",lastPath);
+    QString path = QFileDialog::getExistingDirectory(this,"Select folder with pictures png or csv dataset",lastPath);
     dataset->load(path);
-    ui->dataSetCount->setText(QString::number(dataset->elements.count()));
+    ui->dataSetCount->setText(dataset->datasetType+" "+QString::number(dataset->elements.count()));
 }
 
 void MainWindow::updateTrainingProgress(ulong currentEpoch, double error,int id)
@@ -170,7 +259,6 @@ void MainWindow::trainingFinished()
     isTraining = false;
     ui->startStopButton->setText("Start");
     ui->speedEdit->setEnabled(true);
-    ui->acceptableErrorEdit->setEnabled(true);
     ui->epochCount->setEnabled(true);
     ui->saveGeneratorButton->setEnabled(true);
     ui->loadDataSetButton->setEnabled(true);
@@ -207,7 +295,7 @@ void MainWindow::on_loadGeneratorButton_clicked()
 
 void MainWindow::on_diffButton_clicked()
 {
-    if(!dataset->elements.isEmpty()){
+    if(!dataset->elements.isEmpty() && dataset->datasetType == "pic"){
         QVector<QVector<double>> resultPic;
         for(unsigned int y = 0; y < generator->profileSize; y++){
             resultPic.append(QVector<double>());
@@ -234,35 +322,26 @@ void MainWindow::on_diffButton_clicked()
         }
         imshow("Diff",newPic);
     }else{
-        QMessageBox::critical(this,"Error","Dataset is epmty!");
+        QMessageBox::critical(this,"Error","Dataset is epmty and must be pic!");
     }
 }
 
-void MainWindow::on_tryRealProfileButton_clicked()
+
+void MainWindow::showProfiles(QVector<double> expected, QVector<double> real)
 {
-    QString filePath = QFileDialog::getOpenFileName(this,"Select .csv file",lastPath,"Profile data (*.csv)");
-    if(!filePath.isEmpty()){
-        if(profile == nullptr){
-            profile->deleteLater();
-        }
-        profile = new ProfileData(filePath,this);
-        if(!profile->xyProfile.isEmpty()){
-            QVector<double> keys;
-            for(int i = 0; i < profile->xyProfile.count(); i++){
-                keys.append(i);
-            }
-            xyProfileGraph->clearData();
-            xyProfileGraph->setData(keys,profile->xyProfile);
-            ui->plot2->rescaleAxes();
-            ui->plot2->replot();
-
-
-            Mat pic = generator->generateProfile(profile->xyProfile);
-            imshow("Try",pic);
-
-            qDebug() << profile->xyProfile.count();
-        }else{
-            qDebug() << "Empty";
-        }
+    QVector<double> keys;
+    for(int i = 0; i < 256; i++){
+        keys.append(i);
     }
+    xyProfileGraph->clearData();
+    xyProfileGraph->setData(keys,expected);
+    xyResultProfileGraph->clearData();
+    xyResultProfileGraph->setData(keys,real);
+    ui->plot2->rescaleAxes();
+    ui->plot2->replot();
+}
+
+void MainWindow::updateEpoch(int value)
+{
+    ui->currentEpochLabel->setText(QString::number(value));
 }

@@ -80,6 +80,8 @@ LIBS+=C:/Librarys/OpenCV2/dll/opencv_ffmpeg320.dll
 
 
 INCLUDEPATH += "C:/Librarys/WaveletSpectrum/include"
-INCLUDEPATH += "C:/Librarys/gsl/include"
 LIBS += "C:/Librarys/WaveletSpectrum/lib/libWaveletSpectrum.a"
 LIBS += "C:/Librarys/gsl/lib/libgsl.a"
+
+
+INCLUDEPATH += "C:/Librarys/gsl/include"

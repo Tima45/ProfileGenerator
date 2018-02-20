@@ -8,6 +8,7 @@
 #include <QFileInfo>
 #include <cv.hpp>
 #include "datasetelement.h"
+#include "profiledata.h"
 
 using namespace cv;
 
@@ -16,6 +17,7 @@ class Dataset : public QObject
     Q_OBJECT
 public:
     Dataset(QObject *parent = 0);
+    QString datasetType;
     QVector<DatasetElement*> elements;
     ~Dataset();
 

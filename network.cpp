@@ -35,13 +35,6 @@ Network::Network(unsigned int inputCount, unsigned int width, unsigned int heigh
     for(unsigned int i = 0; i < height; i++){
         layers[width-1][i] = new NeuronNi(inputCount);
     }
-
-
-    errorsFromLayers = new double*[width-1];
-    for(unsigned int layerIndex = 0; layerIndex < width-1; layerIndex++){
-        errorsFromLayers[layerIndex] = new double[height];
-    }
-
 }
 
 Network::~Network()
@@ -59,11 +52,6 @@ Network::~Network()
     delete[] resultsFromLayers;
 
 
-    for(unsigned int layerIndex = 0; layerIndex < width-1; layerIndex++){
-        delete[] errorsFromLayers[layerIndex];
-    }
-    delete[] errorsFromLayers;
-
 }
 
 double Network::work(const double *inputs, unsigned int size)
@@ -80,11 +68,12 @@ double Network::work(const double *inputs, unsigned int size)
             }
         }
         result = lastN->work(resultsFromLayers[0],height);
+        lastResult = result;
     }
     return result;
 }
 
-double Network::train(double speed, const double *inputs, unsigned int size, double expectedValue)
+double Network::train(double speed, const double *inputs, unsigned int size, double expectedValue, double **errorsFromLayers)
 {
     double commonError = 0;
     if(inputCount == size){
@@ -116,6 +105,33 @@ double Network::train(double speed, const double *inputs, unsigned int size, dou
     }
     //apllayResult();
     return commonError;
+}
+
+void Network::trainCsv(double speed, const double *inputs, unsigned int size, double error, double **errorsFromLayers)
+{
+    error = (error > 0)?(1.0-lastResult)*error: lastResult*error;
+    double correctionForLastLayer = lastN->calculateCorrection(speed,error,resultsFromLayers[0],height);
+
+    for(unsigned int i = 0; i < height; i++){
+        errorsFromLayers[0][i] = layers[0][i]->calculateCorrection(speed,correctionForLastLayer,resultsFromLayers[1],height);
+    }
+
+    for(unsigned int layerIndex = 1; layerIndex < width-1; layerIndex++){
+        for(unsigned int i = 0; i < height; i++){
+            errorsFromLayers[layerIndex][i] = 0;
+        }
+        for(unsigned int i = 0; i < height; i++){
+            for(unsigned int j = 0; j < height; j++){
+                errorsFromLayers[layerIndex][i] += layers[layerIndex][i]->calculateCorrection(speed,errorsFromLayers[layerIndex-1][j],resultsFromLayers[layerIndex+1],height);
+            }
+        }
+    }
+
+    for(unsigned int i = 0; i < height; i++){
+        for(unsigned int j = 0; j < height; j++){
+            layers[width-1][i]->calculateCorrection(speed,errorsFromLayers[width-2][j],inputs,size);
+        }
+    }
 }
 
 void Network::apllayResult()

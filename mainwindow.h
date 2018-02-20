@@ -7,10 +7,12 @@
 #include <QFile>
 #include <QTime>
 #include <cv.hpp>
+#include <QThread>
 #include "plot/qcustomplot.h"
 #include "profilegenerator.h"
 #include "dataset.h"
 #include "profiledata.h"
+
 
 namespace Ui {
 class MainWindow;
@@ -33,8 +35,10 @@ public:
     QVector<QCPItemTracer*> tracers2;
 
     QCPGraph *xyProfileGraph;
+    QCPGraph *xyResultProfileGraph;
 
     ProfileGenerator *generator;
+    QThread *f;
     Dataset *dataset;
 
     int64 lastUpdate = 0;
@@ -63,7 +67,9 @@ private slots:
 
     void on_diffButton_clicked();
 
-    void on_tryRealProfileButton_clicked();
+    void showProfiles(QVector<double> expected, QVector<double> real);
+
+    void updateEpoch(int value);
 
 private:
     Ui::MainWindow *ui;

@@ -14,13 +14,13 @@ public:
     explicit Network(unsigned int inputCount,unsigned int width, unsigned int height);
     virtual ~Network();
     double work(const double *inputs,unsigned int size);
-    double train(double speed,const double *inputs,unsigned int size,double expectedValue); // returns error
+    double train(double speed, const double *inputs, unsigned int size, double expectedValue, double **errorsFromLayers); // returns error
+    void trainCsv(double speed, const double *inputs, unsigned int size, double error,double **errorsFromLayers);
     void apllayResult();
 
     NeuronNi ***layers;
     NeuronNi *lastN;
     double **resultsFromLayers;
-    double **errorsFromLayers;
 
 
     unsigned int inputCount = 0;
@@ -29,6 +29,9 @@ public:
 
     unsigned int epochCount = 0;
     Network();
+
+    double lastResult = 0;
+
 };
 
 #endif // NETWORK_H

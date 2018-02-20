@@ -1,8 +1,20 @@
 #include "trainer.h"
 
-Trainer::Trainer(QObject *parent) : QObject(parent)
+Trainer::Trainer(int width,int height,QObject *parent) : QObject(parent)
 {
+    this->width = width;
+    errorsFromLayers = new double*[width-1];
+    for(unsigned int layerIndex = 0; layerIndex < width-1; layerIndex++){
+        errorsFromLayers[layerIndex] = new double[height];
+    }
+}
 
+Trainer::~Trainer()
+{
+    for(unsigned int layerIndex = 0; layerIndex < width-1; layerIndex++){
+        delete[] errorsFromLayers[layerIndex];
+    }
+    delete[] errorsFromLayers;
 }
 
 void Trainer::stratTraining(double speed, int epochCount, double acceptableError, Dataset *dataset)
@@ -23,7 +35,8 @@ void Trainer::stratTraining(double speed, int epochCount, double acceptableError
                         double error = networks.at(i)->train(speed*dataset->elements.at(d)->takeToAccount,
                                               dataset->elements.at(d)->xyProfile.constData(),
                                               dataset->elements.at(d)->xyProfile.count(),
-                                              dataset->elements.at(d)->pic[networks.at(i)->y][networks.at(i)->x]);
+                                              dataset->elements.at(d)->pic[networks.at(i)->y][networks.at(i)->x],
+                                              errorsFromLayers);
                         networks.at(i)->lastError += error;
                     }
                     networks.at(i)->lastError /= dataset->elements.count();
@@ -37,6 +50,7 @@ void Trainer::stratTraining(double speed, int epochCount, double acceptableError
             lock.lockForRead();
         }
         lock.unlock();
+
     }else{
         qDebug() << "Trainer::stratTraining empty";
     }

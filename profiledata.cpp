@@ -193,8 +193,8 @@ void ProfileData::loadFrames()
 
 
 
-        qDebug() << xProfile.count();
-        qDebug() << yProfile.count();
+        //qDebug() << xProfile.count();
+        //qDebug() << yProfile.count();
 
         resize(xProfile,124);
         resize(yProfile,124);
@@ -209,19 +209,30 @@ void ProfileData::loadFrames()
         yProfile.append(0);
         yProfile.append(0);
 
-        qDebug() << xProfile.count();
-        qDebug() << yProfile.count();
+        //qDebug() << xProfile.count();
+        //qDebug() << yProfile.count();
 
         xyProfile.append(xProfile);
         xyProfile.append(yProfile);
+
+        double maxAbs = 0;
+        for(int i = 0; i < xyProfile.count(); i++){
+            if(fabs(xyProfile.at(i)) > maxAbs){
+                maxAbs = fabs(xyProfile.at(i));
+            }
+        }
+        for(int i = 0; i < xyProfile.count(); i++){
+            xyProfile[i] /= maxAbs;
+        }
     }
 }
 
 void ProfileData::resize(QVector<double> &vector, int size)
 {
+    /*
     if(vector.count() > size){
         qDebug() << "lol!";
-    }
+    }*/
 
     if(!vector.isEmpty()){
         int lastSize = vector.count();

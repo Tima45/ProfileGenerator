@@ -5,7 +5,7 @@ ProfileGenerator::ProfileGenerator(unsigned int profileSize, QObject *parent) : 
     if(Network::isPowerOfTwo(profileSize)){
 
         for(int i = 0;i < trainersCount;i++){
-            Trainer *trainer = new Trainer;
+            Trainer *trainer = new Trainer(3,10);
             trainer->id = i;
             QThread *thread = new QThread(this);
 
@@ -73,6 +73,7 @@ Mat ProfileGenerator::generateProfile(QVector<double> xyProfile)
 {
     Mat newPic(profileSize,profileSize,CV_8UC1);
     if(xyProfile.count() == 2*(int)profileSize){
+        /*
         double maxAbs = 0;
         for(int i = 0; i < xyProfile.count(); i++){
             if(fabs(xyProfile.at(i)) > maxAbs){
@@ -81,7 +82,7 @@ Mat ProfileGenerator::generateProfile(QVector<double> xyProfile)
         }
         for(int i = 0; i < xyProfile.count(); i++){
             xyProfile[i] /= maxAbs;
-        }
+        }*/
 
         for(unsigned int y = 0; y < profileSize; y++){
             for(unsigned int x = 0; x < profileSize; x++){
@@ -155,8 +156,91 @@ void ProfileGenerator::load(QString path)
 void ProfileGenerator::startTraining(double speed, int epochCount, double acceptableError, Dataset *dataset)
 {
     if(!dataset->elements.isEmpty()){
-        readyTrainers = 0;
-        emit stratTrainers(speed,epochCount,acceptableError,dataset);
+        if(dataset->datasetType == "pic"){
+            readyTrainers = 0;
+            emit stratTrainers(speed,epochCount,acceptableError,dataset);
+        }else if(dataset->datasetType == "csv"){
+            lock.lockForWrite();
+            stop = false;
+            lock.unlock();
+
+
+            QVector<double> xyDiffs;
+            for(int i = 0; i < 256; i++){
+                xyDiffs.append(0);
+            }
+            QVector<double> xyProf;
+            for(int i = 0; i < 256; i++){
+                xyProf.append(0);
+            }
+
+            lock.lockForRead();
+            for(int i = 0; (i < epochCount) && (!stop);i++){
+                lock.unlock();
+
+
+                for(int dataSetIndex = 0; dataSetIndex < dataset->elements.count(); dataSetIndex++){
+                    for(int i = 0; i < 256; i++){
+                        xyProf[i] = 0;
+                    }
+                    Mat newPic(profileSize,profileSize,CV_8UC1);
+                    for(unsigned int y = 0; y < profileSize; y++){
+                        for(unsigned int x = 0; x < profileSize; x++){
+                            double pixelValue = networks.at(y).at(x)->work(dataset->elements.at(dataSetIndex)->xyProfile.constData(),dataset->elements.at(dataSetIndex)->xyProfile.count());
+                            newPic.at<uchar>(y,x) = (uchar)(pixelValue*255);
+                            xyProf[x] += pixelValue/128.0;
+                            xyProf[128+y] += pixelValue/128.0;
+                        }
+                    }
+
+                    /*
+                    double max = 0;
+                    for(int i = 0; i < 256; i++){
+                        if(fabs(xyProf[i]) > max){
+                            max = xyProf[i];
+                        }
+                    }
+
+                    for(int i = 0; i < 256; i++){
+                        xyProf[i] /= max;
+                    }*/
+
+
+                    imshow("CsvTraining",newPic);
+                    emit showProfiles(dataset->elements.at(dataSetIndex)->xyProfile,xyProf);
+
+
+
+                    for(int i = 0; i < 256; i++){
+                        xyDiffs[i] = dataset->elements.at(dataSetIndex)->xyProfile[i] - xyProf[i];
+                    }
+                    for(int i = 0; i < 128; i++){
+                        for(unsigned int y = 0; y < profileSize; y++){
+                            networks.at(y).at(i)->trainCsv(speed,dataset->elements.at(dataSetIndex)->xyProfile.constData(),dataset->elements.at(dataSetIndex)->xyProfile.count(),xyDiffs[i]/128.0,trainers.at(0)->errorsFromLayers);
+                        }
+                    }
+
+                    for(int i = 128; i < 256; i++){
+                        for(unsigned int x = 0; x < profileSize; x++){
+                            networks.at(i-128).at(x)->trainCsv(speed,dataset->elements.at(dataSetIndex)->xyProfile.constData(),dataset->elements.at(dataSetIndex)->xyProfile.count(),xyDiffs[i]/128.0,trainers.at(0)->errorsFromLayers);
+                        }
+                    }
+                }
+
+                for(unsigned int y = 0; y < profileSize; y++){
+                    for(unsigned int x = 0; x < profileSize; x++){
+                        networks.at(y).at(x)->apllayResult();
+                        networks.at(y).at(x)->epochCount++;
+                    }
+                }
+
+                emit csvEpochFinished(networks.at(0).at(0)->epochCount);
+                lock.lockForRead();
+            }
+            lock.unlock();
+
+            emit trainingFinished();
+        }
     }else{
         qDebug() << "ProfileGenerator::startTraining dataset epmty";
         emit trainingFinished();
@@ -170,6 +254,10 @@ void ProfileGenerator::interapt()
         trainers[i]->stop = true;
         lock.unlock();
     }
+    lock.lockForWrite();
+    stop = true;
+    lock.unlock();
+
 }
 
 void ProfileGenerator::trainerStopped()
@@ -182,6 +270,6 @@ void ProfileGenerator::trainerStopped()
 
 void ProfileGenerator::someTrainerEpochFinished(ulong currentEpoch, double commonError)
 {
-    Trainer*t = (Trainer*)sender();
+    Trainer *t = (Trainer*)sender();
     emit epochFinished(currentEpoch,commonError,t->id);
 }
